@@ -3,11 +3,25 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  User,
+  User as AuthUser,
   AuthContextType,
   LoginCredentials,
   SignupCredentials,
+  SocialProvider,
 } from "../types/auth";
+import {
+  User as FirebaseUser,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+  AuthError as FirebaseAuthError,
+  AuthErrorCodes,
+} from "firebase/auth";
+import { auth, googleProvider } from "@/lib/firebase";
+import { handleAuthError } from "@/lib/errorHandler";
 
 // Initialize with default values
 const defaultAuthContext: AuthContextType = {
@@ -16,6 +30,7 @@ const defaultAuthContext: AuthContextType = {
   isLoading: true,
   login: async () => {},
   signup: async () => {},
+  loginWithSocial: async () => {},
   logout: () => {},
 };
 
@@ -28,87 +43,147 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Check if the user is already logged in (from localStorage)
+  // Convert Firebase user to app user
+  const formatUser = (firebaseUser: FirebaseUser): AuthUser => {
+    const providerData = firebaseUser.providerData[0];
+    let provider: "email" | "google" = "email";
+
+    if (providerData && providerData.providerId === "google.com") {
+      provider = "google";
+    }
+
+    return {
+      id: firebaseUser.uid,
+      email: firebaseUser.email || "",
+      name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
+      provider: provider,
+      photoURL: firebaseUser.photoURL || undefined,
+    };
+  };
+
+  // Monitor auth state
   useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (firebaseUser) => {
+        if (firebaseUser) {
+          const formattedUser = formatUser(firebaseUser);
+          setUser(formattedUser);
+        } else {
+          setUser(null);
         }
-      } catch (error) {
-        console.error("Error reading from localStorage:", error);
-      } finally {
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error("Auth state change error:", error);
         setIsLoading(false);
       }
-    };
+    );
 
-    checkAuth();
+    return () => unsubscribe();
   }, []);
 
-  // Mock login function - in a real app, this would make an API call
+  // Login with email and password
   const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Mock successful login - in a real app, this would come from your backend
-      const mockUser: User = {
-        id: "1",
-        email: credentials.email,
-        name: credentials.email.split("@")[0],
-      };
-
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
-
-      // Redirect to dashboard
+      const { email, password } = credentials;
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const formattedUser = formatUser(userCredential.user);
+      setUser(formattedUser);
       router.push("/dashboard");
+      return;
     } catch (error) {
       console.error("Login error:", error);
-      throw error;
+      const errorMessage = handleAuthError(error);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Mock signup function
+  // Signup with email and password
   const signup = async (credentials: SignupCredentials) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const { email, password, name } = credentials;
 
-      // Mock successful signup
-      const mockUser: User = {
-        id: "1",
-        email: credentials.email,
-        name: credentials.name || credentials.email.split("@")[0],
-      };
+      // Validate password strength
+      if (password.length < 8) {
+        throw new Error("Password must be at least 8 characters long.");
+      }
 
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
 
-      // Redirect to dashboard
+      // Update profile with name if provided
+      if (name && userCredential.user) {
+        try {
+          await updateProfile(userCredential.user, {
+            displayName: name,
+          });
+        } catch (profileError) {
+          console.error("Error updating user profile:", profileError);
+          // Continue anyway, this is not critical
+        }
+      }
+
+      const formattedUser = formatUser(userCredential.user);
+      setUser(formattedUser);
       router.push("/dashboard");
+      return;
     } catch (error) {
       console.error("Signup error:", error);
-      throw error;
+      const errorMessage = handleAuthError(error);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    router.push("/");
+  // Login with Google
+  const loginWithSocial = async (provider: SocialProvider) => {
+    setIsLoading(true);
+    try {
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      const formattedUser = formatUser(userCredential.user);
+      setUser(formattedUser);
+
+      router.push("/dashboard");
+      return;
+    } catch (error) {
+      console.error(`${provider} login error:`, error);
+      const errorMessage = handleAuthError(error);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Logout
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await signOut(auth);
+      setUser(null);
+      router.push("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      throw new Error(handleAuthError(error));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const value = {
@@ -117,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading,
     login,
     signup,
+    loginWithSocial,
     logout,
   };
 

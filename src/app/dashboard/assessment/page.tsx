@@ -14,6 +14,8 @@ export default function AssessmentPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [nextBtnPressed, setNextBtnPressed] = useState(false);
+  const [prevBtnPressed, setPrevBtnPressed] = useState(false);
   const [formData, setFormData] = useState<Partial<AssessmentData>>({
     gender: undefined,
     age: undefined,
@@ -63,15 +65,23 @@ export default function AssessmentPage() {
 
   const nextStep = () => {
     if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-      window.scrollTo(0, 0);
+      setNextBtnPressed(true);
+      setTimeout(() => {
+        setNextBtnPressed(false);
+        setCurrentStep(currentStep + 1);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }, 150);
     }
   };
 
   const prevStep = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-      window.scrollTo(0, 0);
+      setPrevBtnPressed(true);
+      setTimeout(() => {
+        setPrevBtnPressed(false);
+        setCurrentStep(currentStep - 1);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }, 150);
     }
   };
 
@@ -569,26 +579,132 @@ export default function AssessmentPage() {
               type="button"
               onClick={prevStep}
               disabled={currentStep === 1}
-              className="skeu-btn dark:skeu-btn-dark px-6 py-3 rounded-lg text-neutral-700 dark:text-neutral-200 disabled:opacity-50"
+              onMouseDown={() => currentStep > 1 && setPrevBtnPressed(true)}
+              onMouseUp={() => setPrevBtnPressed(false)}
+              onMouseLeave={() => setPrevBtnPressed(false)}
+              className={`relative flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 
+                ${
+                  currentStep === 1
+                    ? "bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500 cursor-not-allowed"
+                    : "skeu-btn dark:skeu-btn-dark text-neutral-700 dark:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                } 
+                ${
+                  prevBtnPressed && currentStep > 1 ? "transform scale-95" : ""
+                }`}
             >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
               Previous
+              <span className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
+                <span
+                  className={`absolute inset-0 bg-current opacity-0 ${
+                    prevBtnPressed && currentStep > 1 ? "animate-ripple" : ""
+                  }`}
+                ></span>
+              </span>
             </button>
 
             {currentStep < totalSteps ? (
               <button
                 type="button"
                 onClick={nextStep}
-                className="skeu-btn dark:skeu-btn-dark px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                onMouseDown={() => setNextBtnPressed(true)}
+                onMouseUp={() => setNextBtnPressed(false)}
+                onMouseLeave={() => setNextBtnPressed(false)}
+                className={`relative flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium text-white 
+                  bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
+                  transition-all duration-200 
+                  ${nextBtnPressed ? "transform scale-95 bg-blue-700" : ""}`}
               >
                 Next
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+                <span className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
+                  <span
+                    className={`absolute inset-0 bg-white opacity-0 ${
+                      nextBtnPressed ? "animate-ripple" : ""
+                    }`}
+                  ></span>
+                </span>
               </button>
             ) : (
               <button
                 type="submit"
                 disabled={loading}
-                className="skeu-btn dark:skeu-btn-dark px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-70"
+                className={`relative flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium text-white 
+                  bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
+                  transition-all duration-200 
+                  ${loading ? "opacity-70 cursor-wait" : ""}`}
               >
-                {loading ? "Processing..." : "Submit Assessment"}
+                {loading ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    Submit Assessment
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </>
+                )}
               </button>
             )}
           </div>

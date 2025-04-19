@@ -64,9 +64,25 @@ export default function ResultsPage() {
         </div>
         <Link
           href="/dashboard/assessment"
-          className="skeu-btn px-4 py-3 rounded-lg text-center font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          className="skeu-btn px-4 py-3 rounded-lg text-center font-medium bg-blue-600 hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 focus:outline-none"
         >
-          Take New Assessment
+          <span className="flex items-center justify-center gap-2">
+            <span>Take New Assessment</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 transition-transform group-hover:translate-x-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M14 5l7 7m0 0l-7 7m7-7H3"
+              />
+            </svg>
+          </span>
         </Link>
       </div>
 

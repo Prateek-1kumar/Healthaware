@@ -66,6 +66,15 @@ const config: Config = {
         ],
         mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
       },
+      keyframes: {
+        ripple: {
+          "0%": { opacity: "0.1", transform: "scale(0)" },
+          "100%": { opacity: "0", transform: "scale(4)" },
+        },
+      },
+      animation: {
+        ripple: "ripple 600ms linear",
+      },
     },
   },
   plugins: [],

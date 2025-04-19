@@ -3,15 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { LoginCredentials } from "@/types/auth";
+import { LoginCredentials, SocialProvider } from "@/types/auth";
+import SocialLoginButton from "@/components/SocialLoginButton";
+import OrDivider from "@/components/OrDivider";
+import AuthErrorMessage from "@/components/AuthErrorMessage";
 
 export default function Login() {
-  const { login, isLoading } = useAuth();
+  const { login, loginWithSocial, isLoading } = useAuth();
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: "",
     password: "",
   });
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [socialLoginProvider, setSocialLoginProvider] =
+    useState<SocialProvider | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -19,16 +24,60 @@ export default function Login() {
       ...prev,
       [name]: value,
     }));
+
+    // Clear error message when user starts typing after an error
+    if (errorMessage) {
+      setErrorMessage("");
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
+    // Basic validation
+    if (!credentials.email?.trim()) {
+      setErrorMessage("Please enter your email address.");
+      return;
+    }
+
+    if (!credentials.password) {
+      setErrorMessage("Please enter your password.");
+      return;
+    }
+
     try {
       await login(credentials);
     } catch (error) {
-      setErrorMessage("Invalid email or password. Please try again.");
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("An unexpected error occurred. Please try again.");
+      }
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setErrorMessage("");
+    setSocialLoginProvider("google");
+
+    try {
+      // Show feedback message
+      const feedbackEl = document.getElementById("login-feedback");
+      if (feedbackEl) {
+        feedbackEl.textContent = "Authenticating with Google...";
+        feedbackEl.classList.remove("hidden", "bg-red-100", "text-red-700");
+        feedbackEl.classList.add("bg-blue-100", "text-blue-700");
+      }
+
+      await loginWithSocial("google");
+    } catch (error) {
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Error signing in with Google. Please try again.");
+      }
+      setSocialLoginProvider(null);
     }
   };
 
@@ -47,11 +96,28 @@ export default function Login() {
             </p>
           </div>
 
+          <div className="space-y-4">
+            <SocialLoginButton
+              provider="google"
+              onClick={handleGoogleLogin}
+              isLoading={isLoading && socialLoginProvider === "google"}
+            />
+          </div>
+
+          <OrDivider />
+
           <form onSubmit={handleLogin} className="space-y-6">
-            {errorMessage && (
-              <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-                {errorMessage}
-              </div>
+            {errorMessage ? (
+              <AuthErrorMessage message={errorMessage} />
+            ) : (
+              socialLoginProvider && (
+                <div
+                  id="login-feedback"
+                  className="p-3 bg-blue-100 text-blue-700 rounded-lg text-sm mb-4"
+                >
+                  Authenticating with Google...
+                </div>
+              )
             )}
 
             <div className="space-y-2">
@@ -109,10 +175,12 @@ export default function Login() {
             <div>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading && !socialLoginProvider}
                 className="w-full skeu-btn dark:skeu-btn-dark rounded-lg py-3 px-4 text-center font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-70"
               >
-                {isLoading ? "Signing in..." : "Sign in"}
+                {isLoading && !socialLoginProvider
+                  ? "Signing in..."
+                  : "Sign in"}
               </button>
             </div>
           </form>

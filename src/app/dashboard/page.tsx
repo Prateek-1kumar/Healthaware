@@ -37,9 +37,25 @@ export default function Dashboard() {
         </div>
         <Link
           href="/dashboard/assessment"
-          className="skeu-btn px-6 py-3 rounded-full text-center font-medium bg-blue-600 text-black hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
+          className="skeu-btn px-6 py-3 rounded-full text-center font-medium bg-blue-600 text-black hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg active:scale-95 focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 focus:outline-none"
         >
-          Start New Assessment
+          <span className="flex items-center justify-center gap-2">
+            <span>Start New Assessment</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 transition-transform group-hover:translate-x-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M14 5l7 7m0 0l-7 7m7-7H3"
+              />
+            </svg>
+          </span>
         </Link>
       </div>
 

@@ -3,10 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { SignupCredentials } from "@/types/auth";
+import { SignupCredentials, SocialProvider } from "@/types/auth";
+import AuthErrorMessage from "@/components/AuthErrorMessage";
+import SocialLoginButton from "@/components/SocialLoginButton";
+import OrDivider from "@/components/OrDivider";
 
 export default function Signup() {
-  const { signup, isLoading } = useAuth();
+  const { signup, loginWithSocial, isLoading } = useAuth();
   const [credentials, setCredentials] = useState<SignupCredentials>({
     name: "",
     email: "",
@@ -15,6 +18,8 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [passwordMatchError, setPasswordMatchError] = useState(false);
+  const [socialLoginProvider, setSocialLoginProvider] =
+    useState<SocialProvider | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -22,6 +27,11 @@ export default function Signup() {
       ...prev,
       [name]: value,
     }));
+
+    // Clear error message when user starts typing after an error
+    if (errorMessage) {
+      setErrorMessage("");
+    }
 
     // Check password match if confirm password field is changing
     if (name === "password") {
@@ -37,21 +47,93 @@ export default function Signup() {
     const value = e.target.value;
     setConfirmPassword(value);
     setPasswordMatchError(value !== credentials.password);
+
+    // Clear error message when user is fixing their input
+    if (errorMessage) {
+      setErrorMessage("");
+    }
+  };
+
+  const validateForm = () => {
+    // Name validation
+    if (!credentials.name?.trim()) {
+      setErrorMessage("Please enter your name");
+      return false;
+    }
+
+    // Email validation
+    if (!credentials.email?.trim()) {
+      setErrorMessage("Please enter your email address");
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(credentials.email)) {
+      setErrorMessage("Please enter a valid email address");
+      return false;
+    }
+
+    // Password validation
+    if (!credentials.password) {
+      setErrorMessage("Please enter a password");
+      return false;
+    }
+
+    if (credentials.password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long");
+      return false;
+    }
+
+    // Password match validation
+    if (credentials.password !== confirmPassword) {
+      setPasswordMatchError(true);
+      setErrorMessage("Passwords do not match");
+      return false;
+    }
+
+    return true;
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
-    if (credentials.password !== confirmPassword) {
-      setPasswordMatchError(true);
+    if (!validateForm()) {
       return;
     }
 
     try {
       await signup(credentials);
     } catch (error) {
-      setErrorMessage("Failed to create account. Please try again.");
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Failed to create account. Please try again.");
+      }
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setErrorMessage("");
+    setSocialLoginProvider("google");
+
+    try {
+      // Show feedback message
+      const feedbackEl = document.getElementById("signup-feedback");
+      if (feedbackEl) {
+        feedbackEl.textContent = "Signing up with Google...";
+        feedbackEl.classList.remove("hidden", "bg-red-100", "text-red-700");
+        feedbackEl.classList.add("bg-blue-100", "text-blue-700");
+      }
+
+      await loginWithSocial("google");
+    } catch (error) {
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Error signing up with Google. Please try again.");
+      }
+      setSocialLoginProvider(null);
     }
   };
 
@@ -70,11 +152,28 @@ export default function Signup() {
             </p>
           </div>
 
+          <div className="space-y-4 mb-4">
+            <SocialLoginButton
+              provider="google"
+              onClick={handleGoogleSignup}
+              isLoading={isLoading && socialLoginProvider === "google"}
+            />
+          </div>
+
+          <OrDivider />
+
           <form onSubmit={handleSignup} className="space-y-6">
-            {errorMessage && (
-              <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-                {errorMessage}
-              </div>
+            {errorMessage ? (
+              <AuthErrorMessage message={errorMessage} />
+            ) : (
+              socialLoginProvider && (
+                <div
+                  id="signup-feedback"
+                  className="p-3 bg-blue-100 text-blue-700 rounded-lg text-sm mb-4"
+                >
+                  Signing up with Google...
+                </div>
+              )
             )}
 
             <div className="space-y-2">
@@ -176,7 +275,9 @@ export default function Signup() {
                 disabled={isLoading || passwordMatchError}
                 className="w-full rounded-lg py-3 px-4 text-center font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-70 shadow-lg backdrop-blur-sm"
               >
-                {isLoading ? "Creating account..." : "Create Account"}
+                {isLoading && !socialLoginProvider
+                  ? "Creating account..."
+                  : "Create Account"}
               </button>
             </div>
           </form>
