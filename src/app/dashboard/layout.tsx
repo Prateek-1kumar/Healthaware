@@ -30,12 +30,12 @@ export default function DashboardLayout({
   if (!mounted) return null;
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+    <div className="flex min-h-[100dvh] bg-gradient-to-br from-blue-50 to-purple-50">
       {/* Sidebar for desktop */}
-      <aside className="hidden md:flex flex-col w-64 glass-card rounded-none shadow-lg">
+      <aside className="hidden md:flex flex-col w-64 glass-card rounded-none shadow-lg h-[100dvh] sticky top-0">
         <div className="p-4 border-b border-neutral-200">
           <Link href="/dashboard" className="flex items-center">
-            <span className="text-xl font-bold text-blue-600">Healthaware</span>
+            <span className="text-xl font-bold text-blue-600">Neurosync</span>
           </Link>
         </div>
 
@@ -82,7 +82,7 @@ export default function DashboardLayout({
         <header className="md:hidden glass-sm sticky top-0 z-10">
           <div className="flex items-center justify-between p-4">
             <Link href="/dashboard" className="text-xl font-bold text-blue-600">
-              Healthaware
+              Neurosync
             </Link>
 
             <button

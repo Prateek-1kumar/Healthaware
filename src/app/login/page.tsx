@@ -88,7 +88,7 @@ export default function Login() {
         <div className="neu-flat dark:neu-flat-dark rounded-neu p-8 md:p-10">
           <div className="text-center mb-8">
             <Link href="/">
-              <h2 className="text-2xl font-bold text-blue-600">Healthaware</h2>
+              <h2 className="text-2xl font-bold text-blue-600">Neurosync</h2>
             </Link>
             <h1 className="text-3xl font-bold mt-4 mb-2">Welcome Back</h1>
             <p className="text-neutral-600 dark:text-neutral-400">

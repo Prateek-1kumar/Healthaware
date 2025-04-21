@@ -54,8 +54,8 @@ export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  signup: (credentials: SignupCredentials) => Promise<void>;
-  loginWithSocial: (provider: SocialProvider) => Promise<void>;
-  logout: () => void;
+  login: (credentials: LoginCredentials) => Promise<User | null>;
+  signup: (credentials: SignupCredentials) => Promise<User | null>;
+  loginWithSocial: (provider: SocialProvider) => Promise<User | null>;
+  logout: () => Promise<void>;
 }

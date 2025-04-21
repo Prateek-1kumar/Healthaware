@@ -1,6 +1,6 @@
-# Healthaware - Mental Health Assessment Platform
+# Neurosync - Mental Health Assessment Platform
 
-Healthaware is a web application for mental health assessment and tracking. It provides users with personalized insights into their mental well-being through AI-powered analysis.
+Neurosync is a web application for mental health assessment and tracking. It provides users with personalized insights into their mental well-being through AI-powered analysis.
 
 ## Features
 
@@ -32,8 +32,8 @@ Healthaware is a web application for mental health assessment and tracking. It p
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/healthaware.git
-   cd healthaware
+   git clone https://github.com/yourusername/Neurosync.git
+   cd Neurosync
    ```
 
 2. Install dependencies:

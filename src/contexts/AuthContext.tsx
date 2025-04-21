@@ -22,15 +22,16 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 import { handleAuthError } from "@/lib/errorHandler";
+import { logUserIdToken } from "@/lib/authUtils";
 
 // Initialize with default values
 const defaultAuthContext: AuthContextType = {
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  login: async () => {},
-  signup: async () => {},
-  loginWithSocial: async () => {},
+  login: async () => null,
+  signup: async () => null,
+  loginWithSocial: async () => null,
   logout: () => {},
 };
 
@@ -69,8 +70,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
       auth,
-      (firebaseUser) => {
+      async (firebaseUser) => {
         if (firebaseUser) {
+          // Log ID token whenever auth state changes to authenticated
+          await logUserIdToken(firebaseUser);
+
           const formattedUser = formatUser(firebaseUser);
           setUser(formattedUser);
         } else {
@@ -97,10 +101,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         email,
         password
       );
+
+      // Log the user's ID token after successful login
+      await logUserIdToken(userCredential.user);
+
       const formattedUser = formatUser(userCredential.user);
       setUser(formattedUser);
       router.push("/dashboard");
-      return;
+      return formattedUser;
     } catch (error) {
       console.error("Login error:", error);
       const errorMessage = handleAuthError(error);
@@ -139,10 +147,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
 
+      // Log the user's ID token after successful signup
+      await logUserIdToken(userCredential.user);
+
       const formattedUser = formatUser(userCredential.user);
       setUser(formattedUser);
       router.push("/dashboard");
-      return;
+      return formattedUser;
     } catch (error) {
       console.error("Signup error:", error);
       const errorMessage = handleAuthError(error);
@@ -157,11 +168,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsLoading(true);
     try {
       const userCredential = await signInWithPopup(auth, googleProvider);
+
+      // Log the user's ID token after successful social login
+      await logUserIdToken(userCredential.user);
+
       const formattedUser = formatUser(userCredential.user);
       setUser(formattedUser);
 
       router.push("/dashboard");
-      return;
+      return formattedUser;
     } catch (error) {
       console.error(`${provider} login error:`, error);
       const errorMessage = handleAuthError(error);

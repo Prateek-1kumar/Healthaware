@@ -1,12 +1,12 @@
-# Firebase Setup Guide for Healthaware
+# Firebase Setup Guide for Neurosync
 
-This guide will help you set up Firebase authentication for the Healthaware application, including Google and Apple sign-in methods.
+This guide will help you set up Firebase authentication for the Neurosync application, including Google and Apple sign-in methods.
 
 ## Creating a Firebase Project
 
 1. Go to the [Firebase Console](https://console.firebase.google.com/)
 2. Click "Add project" and follow the steps to create a new project
-3. Give your project a name (e.g., "Healthaware")
+3. Give your project a name (e.g., "Neurosync")
 4. Configure Google Analytics (optional but recommended)
 5. Click "Create project"
 
@@ -47,7 +47,7 @@ This guide will help you set up Firebase authentication for the Healthaware appl
 
 1. In your Firebase project, click on the gear icon (⚙️) next to "Project Overview" and select "Project settings"
 2. Scroll down to "Your apps" section and click the web icon (`</>`)
-3. Register your app with a nickname (e.g., "Healthaware Web")
+3. Register your app with a nickname (e.g., "Neurosync Web")
 4. Click "Register app"
 5. Copy the Firebase configuration object
 

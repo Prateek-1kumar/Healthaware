@@ -3,47 +3,38 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { AssessmentResult } from "@/types/assessment";
+import { assessmentApi } from "@/lib/api";
+import { FiArrowLeft, FiFileText, FiAlertCircle, FiInfo } from "react-icons/fi";
 
 export default function ResultDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { id } = params;
-
-  const [result, setResult] = useState<AssessmentResult | null>(null);
-  const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
 
-    const fetchResult = () => {
-      try {
-        // In a real app, you would fetch from an API with the ID
-        const storedResults = localStorage.getItem("assessmentResults");
-        const parsedResults: AssessmentResult[] = storedResults
-          ? JSON.parse(storedResults)
-          : [];
-        const foundResult = parsedResults.find((result) => result.id === id);
-
-        if (foundResult) {
-          setResult(foundResult);
-        }
-      } catch (error) {
-        console.error("Error fetching result:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchResult();
-    }
-  }, [id]);
+  // Fetch assessment result using React Query
+  const {
+    data: result,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["assessment", id],
+    queryFn: () => assessmentApi.getAssessmentById(id as string),
+    enabled: !!id && mounted, // Only run query when ID is available and component is mounted
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 1000 * 60, // Consider data stale after 1 minute
+  });
 
   if (!mounted) return null;
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="glass-card p-12 text-center">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
@@ -52,10 +43,12 @@ export default function ResultDetailPage() {
     );
   }
 
-  if (!result) {
+  if (error || !result) {
     return (
       <div className="glass-card p-12 text-center">
-        <div className="text-5xl mb-4">🔍</div>
+        <div className="text-5xl mb-4 text-amber-500">
+          <FiAlertCircle className="mx-auto" />
+        </div>
         <h2 className="text-xl font-semibold mb-2">Result Not Found</h2>
         <p className="text-gray-800 mb-6">
           The assessment result you are looking for doesn&apos;t exist or has
@@ -138,7 +131,7 @@ export default function ResultDetailPage() {
           href="/dashboard/results"
           className="flex items-center gap-2 text-blue-700 hover:text-blue-800 mb-4 font-medium"
         >
-          <span aria-hidden="true">←</span>
+          <FiArrowLeft className="text-lg" />
           <span>Back to Results</span>
         </Link>
 
@@ -148,7 +141,8 @@ export default function ResultDetailPage() {
               Assessment Result
             </h1>
             <div className="flex items-center gap-3 mt-2">
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 font-medium flex items-center gap-1">
+                <FiFileText className="text-sm" />
                 {formatDate(result.date)}
               </span>
               <span
@@ -254,8 +248,10 @@ export default function ResultDetailPage() {
                   Gender
                 </div>
                 <div className="font-medium text-gray-800">
-                  {result.data.gender.charAt(0).toUpperCase() +
-                    result.data.gender.slice(1)}
+                  {result.data.gender
+                    ? result.data.gender.charAt(0).toUpperCase() +
+                      result.data.gender.slice(1)
+                    : "Not specified"}
                 </div>
               </div>
 
@@ -390,11 +386,14 @@ export default function ResultDetailPage() {
       </div>
 
       <div className="mt-8 text-center">
-        <p className="text-sm text-gray-800 mb-4">
-          This assessment provides general insights and is not a clinical
-          diagnosis. Please consult with a healthcare professional for
-          personalized advice.
-        </p>
+        <div className="flex items-center justify-center gap-2 text-sm text-gray-800 mb-4">
+          <FiInfo className="text-amber-500" />
+          <p>
+            This assessment provides general insights and is not a clinical
+            diagnosis. Please consult with a healthcare professional for
+            personalized advice.
+          </p>
+        </div>
         <button
           onClick={() => window.print()}
           className="skeu-btn px-4 py-2 rounded-lg text-gray-800 hover:text-gray-900 font-medium"

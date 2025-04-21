@@ -5,9 +5,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { FiLogOut } from "react-icons/fi";
 
 export default function Home() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
@@ -28,6 +29,15 @@ export default function Home() {
       router.push("/dashboard");
     } else {
       router.push("/signup");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push("/login");
+    } catch (error) {
+      console.error("Error logging out:", error);
     }
   };
 
@@ -84,7 +94,7 @@ export default function Home() {
       {/* Header */}
       <header className="w-full py-4 px-6 flex justify-between items-center glass-sm">
         <div className="flex items-center gap-2">
-          <div className="text-blue-600 font-bold text-2xl">Healthaware</div>
+          <div className="text-blue-600 font-bold text-2xl">Neurosync</div>
         </div>
         <div className="flex gap-4 items-center">
           {!mounted || isLoading ? (
@@ -94,7 +104,7 @@ export default function Home() {
               <div className="w-20 h-10 bg-gray-200 animate-pulse rounded-full"></div>
             </div>
           ) : isAuthenticated && user ? (
-            // Show user info and dashboard link when authenticated
+            // Show user info, dashboard link, and logout button when authenticated
             <>
               <Link
                 href="/dashboard/profile"
@@ -110,10 +120,17 @@ export default function Home() {
               </Link>
               <Link
                 href="/dashboard"
-                className="px-4 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md hover:shadow-lg skeu-btn"
+                className="px-4 py-2 rounded-full bg-blue-600  hover:bg-blue-700 transition-all shadow-md hover:shadow-lg skeu-btn"
               >
                 Dashboard
               </Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 rounded-full text-red-600 hover:bg-red-50 transition-all neu-flat"
+              >
+                <FiLogOut className="text-lg" />
+                <span className="hidden md:inline">Logout</span>
+              </button>
             </>
           ) : (
             // Show login/signup when not authenticated
@@ -126,7 +143,7 @@ export default function Home() {
               </Link>
               <Link
                 href="/signup"
-                className="px-4 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md hover:shadow-lg skeu-btn"
+                className="px-4 py-2 rounded-full bg-blue-600  hover:bg-blue-700 transition-all shadow-md hover:shadow-lg skeu-btn"
               >
                 Sign Up
               </Link>
@@ -162,7 +179,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
                     href="/dashboard"
-                    className="px-6 py-3 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg text-center skeu-btn"
+                    className="px-6 py-3 rounded-full bg-blue-600 font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg text-center skeu-btn"
                   >
                     Go to Dashboard
                   </Link>
@@ -202,7 +219,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button
                     onClick={handleGetStarted}
-                    className="px-6 py-3 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg text-center skeu-btn"
+                    className="px-6 py-3 rounded-full bg-blue-600  font-medium hover:bg-blue-700 transition-all shadow-md hover:shadow-lg text-center skeu-btn"
                   >
                     Get Started
                   </button>
@@ -271,7 +288,7 @@ export default function Home() {
       <footer className="w-full py-6 px-6 glass-sm">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-gray-700 text-sm">
-            © {new Date().getFullYear()} Healthaware. All rights reserved.
+            © {new Date().getFullYear()} Neurosync. All rights reserved.
           </div>
           <div className="flex gap-6">
             <Link

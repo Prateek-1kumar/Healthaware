@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiCheck,
+  FiAlertTriangle,
+} from "react-icons/fi";
 import {
   AssessmentData,
   Gender,
@@ -9,11 +16,14 @@ import {
   StressLevel,
   YesNoAnswer,
 } from "@/types/assessment";
+import { assessmentApi } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AssessmentPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [nextBtnPressed, setNextBtnPressed] = useState(false);
   const [prevBtnPressed, setPrevBtnPressed] = useState(false);
   const [formData, setFormData] = useState<Partial<AssessmentData>>({
@@ -30,7 +40,26 @@ export default function AssessmentPage() {
     additionalNotes: "",
   });
 
+  // Create mutation for submitting assessment
+  const submitAssessmentMutation = useMutation({
+    mutationFn: (data: AssessmentData) => assessmentApi.submitAssessment(data),
+    onSuccess: (result) => {
+      // Invalidate and refetch assessment queries
+      queryClient.invalidateQueries({ queryKey: ["assessments"] });
+      queryClient.invalidateQueries({ queryKey: ["assessment", result.id] });
+
+      // Redirect to results page with the new assessment ID
+      router.push(`/dashboard/results/${result.id}`);
+    },
+    onError: (error) => {
+      console.error("Error submitting assessment:", error);
+      // Handle error display to the user
+      setSubmitError("Failed to submit assessment. Please try again later.");
+    },
+  });
+
   const totalSteps = 4;
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleInputChange = (field: keyof AssessmentData, value: any) => {
     setFormData((prev) => ({
@@ -85,54 +114,54 @@ export default function AssessmentPage() {
     }
   };
 
+  const validateCurrentStep = () => {
+    if (currentStep === 1) {
+      if (!formData.gender) return "Please select your gender";
+      if (!formData.age) return "Please enter your age";
+    } else if (currentStep === 2) {
+      if (!formData.workPressure)
+        return "Please select your work pressure level";
+    } else if (currentStep === 3) {
+      if (!formData.dietaryHabits) return "Please select your dietary habits";
+      if (!formData.financialStressLevel)
+        return "Please select your financial stress level";
+    } else if (currentStep === 4) {
+      if (!formData.suicidalThoughts)
+        return "Please answer all required questions";
+      if (!formData.familyMentalHealthHistory)
+        return "Please answer all required questions";
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitError(null);
 
-    try {
-      // In a real app, this would call an API to submit the assessment data
-      // For this demo, we'll just simulate a delay and redirect to results
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Final validation to ensure all required fields are completed
+    const errorMsg = validateCurrentStep();
+    if (errorMsg) {
+      setSubmitError(errorMsg);
+      return;
+    }
 
-      // Save to localStorage for demonstration purposes
-      const mockResult = {
-        id: String(Date.now()),
-        userId: "1",
-        date: new Date().toISOString(),
-        data: formData as AssessmentData,
-        analysis: {
-          overallScore: 68,
-          stressScore: 72,
-          wellbeingScore: 65,
-          riskLevel: "moderate" as const,
-          keyInsights: [
-            "Your work pressure and financial stress are contributing factors to your overall stress level.",
-            "Your sleep duration is adequate but could be improved for better mental health.",
-            "Job satisfaction is moderate, which is positive for mental well-being.",
-          ],
-          recommendations: [
-            "Consider stress management techniques such as mindfulness or meditation.",
-            "Try to maintain regular sleep schedule of 7-8 hours per night.",
-            "Seek financial planning resources to help reduce financial stress.",
-            "Take regular breaks during work hours to prevent burnout.",
-          ],
-        },
-      };
-
-      const existingResults = JSON.parse(
-        localStorage.getItem("assessmentResults") || "[]"
-      );
-      localStorage.setItem(
-        "assessmentResults",
-        JSON.stringify([...existingResults, mockResult])
-      );
-
-      // Redirect to results page
-      router.push(`/dashboard/results/${mockResult.id}`);
-    } catch (error) {
-      console.error("Error submitting assessment:", error);
-    } finally {
-      setLoading(false);
+    // Check if we have all required data
+    if (
+      formData.gender &&
+      formData.age &&
+      formData.workPressure &&
+      formData.jobSatisfaction &&
+      formData.sleepDuration &&
+      formData.dietaryHabits &&
+      formData.workHoursPerDay &&
+      formData.financialStressLevel &&
+      formData.suicidalThoughts &&
+      formData.familyMentalHealthHistory
+    ) {
+      // Submit the data to the backend
+      submitAssessmentMutation.mutate(formData as AssessmentData);
+    } else {
+      setSubmitError("Please complete all required fields before submitting");
     }
   };
 
@@ -164,7 +193,14 @@ export default function AssessmentPage() {
         </div>
       </div>
 
-      <div className="neu-flat dark:neu-flat-dark rounded-xl p-6 md:p-8">
+      {submitError && (
+        <div className="mb-6 p-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          <FiAlertTriangle className="flex-shrink-0 text-xl" />
+          <p>{submitError}</p>
+        </div>
+      )}
+
+      <div className="neu-flat dark:neu-flat-dark rounded-xl p-6 md:p-8 mb-6">
         <form onSubmit={handleSubmit}>
           {/* Step 1: Personal Info */}
           {currentStep === 1 && (
@@ -502,15 +538,11 @@ export default function AssessmentPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs text-neutral-500">
-                    This information is kept strictly confidential and is used
-                    only for assessment purposes.
-                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-4">
-                    Is there a family history of mental illness?
+                    Do you have a family history of mental health issues?
                   </label>
                   <div className="grid grid-cols-3 gap-3">
                     {[
@@ -562,147 +594,60 @@ export default function AssessmentPage() {
                   <div className="neu-pressed dark:neu-pressed-dark rounded-lg">
                     <textarea
                       id="additionalNotes"
+                      rows={4}
                       value={formData.additionalNotes || ""}
                       onChange={(e) => handleTextChange(e, "additionalNotes")}
-                      className="w-full p-3 bg-transparent border-none focus:ring-0 min-h-[100px]"
-                      placeholder="Share any additional information that might be relevant..."
-                    />
+                      className="w-full p-3 bg-transparent border-none focus:ring-0 resize-none"
+                      placeholder="Share any additional information that might be relevant to your mental health..."
+                    ></textarea>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Navigation buttons */}
+          {/* Navigation Buttons */}
           <div className="flex justify-between mt-8">
             <button
               type="button"
               onClick={prevStep}
               disabled={currentStep === 1}
-              onMouseDown={() => currentStep > 1 && setPrevBtnPressed(true)}
-              onMouseUp={() => setPrevBtnPressed(false)}
-              onMouseLeave={() => setPrevBtnPressed(false)}
-              className={`relative flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium 
                 ${
                   currentStep === 1
-                    ? "bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500 cursor-not-allowed"
-                    : "skeu-btn dark:skeu-btn-dark text-neutral-700 dark:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-                } 
-                ${
-                  prevBtnPressed && currentStep > 1 ? "transform scale-95" : ""
-                }`}
+                    ? "opacity-50 cursor-not-allowed"
+                    : "neu-flat dark:neu-flat-dark hover:opacity-90"
+                }
+                ${prevBtnPressed ? "neu-pressed dark:neu-pressed-dark" : ""}
+              `}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              Previous
-              <span className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
-                <span
-                  className={`absolute inset-0 bg-current opacity-0 ${
-                    prevBtnPressed && currentStep > 1 ? "animate-ripple" : ""
-                  }`}
-                ></span>
-              </span>
+              <FiChevronLeft className="text-lg" /> Previous
             </button>
 
             {currentStep < totalSteps ? (
               <button
                 type="button"
                 onClick={nextStep}
-                onMouseDown={() => setNextBtnPressed(true)}
-                onMouseUp={() => setNextBtnPressed(false)}
-                onMouseLeave={() => setNextBtnPressed(false)}
-                className={`relative flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium text-white 
-                  bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
-                  transition-all duration-200 
-                  ${nextBtnPressed ? "transform scale-95 bg-blue-700" : ""}`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-blue-600 text-white shadow-md hover:bg-blue-700 active:scale-95 transition-all 
+                ${nextBtnPressed ? "neu-pressed dark:neu-pressed-dark" : ""}
+              `}
               >
-                Next
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-                <span className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
-                  <span
-                    className={`absolute inset-0 bg-white opacity-0 ${
-                      nextBtnPressed ? "animate-ripple" : ""
-                    }`}
-                  ></span>
-                </span>
+                Next <FiChevronRight className="text-lg" />
               </button>
             ) : (
               <button
                 type="submit"
-                disabled={loading}
-                className={`relative flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium text-white 
-                  bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
-                  transition-all duration-200 
-                  ${loading ? "opacity-70 cursor-wait" : ""}`}
+                disabled={submitAssessmentMutation.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-green-600 text-white shadow-md hover:bg-green-700 active:scale-95 transition-all disabled:opacity-70 disabled:hover:bg-green-600 disabled:active:scale-100"
               >
-                {loading ? (
+                {submitAssessmentMutation.isPending ? (
                   <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Processing...
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Submitting...
                   </>
                 ) : (
                   <>
-                    Submit Assessment
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
+                    Submit <FiCheck className="text-lg" />
                   </>
                 )}
               </button>
@@ -711,13 +656,18 @@ export default function AssessmentPage() {
         </form>
       </div>
 
-      <div className="mt-8 text-sm text-neutral-500 text-center">
-        <p>
-          Need help? If you&apos;re in crisis, please call the National Suicide
-          Prevention Lifeline at 988 or text HOME to 741741 to reach the Crisis
-          Text Line.
-        </p>
-      </div>
+      {currentStep === 1 && (
+        <div className="glass-sm p-4 rounded-lg text-neutral-600 dark:text-neutral-400 text-sm">
+          <p className="flex items-start gap-2">
+            <FiAlertTriangle className="text-amber-500 mt-0.5 flex-shrink-0" />
+            <span>
+              Your privacy is important to us. All your responses will be kept
+              confidential and used only to provide you with personalized
+              insights.
+            </span>
+          </p>
+        </div>
+      )}
     </div>
   );
 }

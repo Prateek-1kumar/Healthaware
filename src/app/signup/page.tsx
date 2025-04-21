@@ -7,6 +7,7 @@ import { SignupCredentials, SocialProvider } from "@/types/auth";
 import AuthErrorMessage from "@/components/AuthErrorMessage";
 import SocialLoginButton from "@/components/SocialLoginButton";
 import OrDivider from "@/components/OrDivider";
+import { profileApi } from "@/lib/api";
 
 export default function Signup() {
   const { signup, loginWithSocial, isLoading } = useAuth();
@@ -94,6 +95,27 @@ export default function Signup() {
     return true;
   };
 
+  const createUserProfile = async (name: string, email: string) => {
+    try {
+      await profileApi.createProfile({
+        name,
+        email,
+        additionalInfo: {
+          preferences: {
+            theme: "dark",
+          },
+          settings: {
+            notifications: true,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error creating user profile:", error);
+      // We won't fail the signup process if profile creation fails
+      // This will be handled separately
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
@@ -103,7 +125,12 @@ export default function Signup() {
     }
 
     try {
-      await signup(credentials);
+      // First, create Firebase user
+      const user = await signup(credentials);
+      // Then create the user profile in the backend
+      if (user && credentials.name) {
+        await createUserProfile(credentials.name, user.email);
+      }
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);
@@ -126,7 +153,13 @@ export default function Signup() {
         feedbackEl.classList.add("bg-blue-100", "text-blue-700");
       }
 
-      await loginWithSocial("google");
+      // First, authenticate with Google
+      const user = await loginWithSocial("google");
+
+      // If we have user data, create profile
+      if (user && user.name) {
+        await createUserProfile(user.name, user.email);
+      }
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);
@@ -144,7 +177,7 @@ export default function Signup() {
         <div className="glass-card p-8 md:p-10">
           <div className="text-center mb-8">
             <Link href="/">
-              <h2 className="text-2xl font-bold text-blue-600">Healthaware</h2>
+              <h2 className="text-2xl font-bold text-blue-600">Neurosync</h2>
             </Link>
             <h1 className="text-3xl font-bold mt-4 mb-2">Create Account</h1>
             <p className="text-neutral-600 dark:text-neutral-400">
